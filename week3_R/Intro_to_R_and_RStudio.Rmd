@@ -2,9 +2,9 @@
 title: "Introduction to R and RStudio"
 author: Nicole Black, Kayla Xu
 date: 07/13/22
-updated: 09/01/23
+updated: 01/22/24
 ---
-### Secure copy (scp) this file to your qbio_490_name repository. DO NOT EDIT IN fa23_course_materials! ###
+### Secure copy (scp) this file to your qbio_490_name repository. DO NOT EDIT IN sp24_course_materials! ###
 
 Welcome to RStudio! This document will take you through the basics of R before we jump right into our analyses. 
 
@@ -553,4 +553,4 @@ install_course_github("swirldev", "R_Programming_E")
 swirl()
 ```
 
-  To get extra credit, email completed assignments to "jam76378@usc.edu" when prompted. You will receive 0.25 points for completion of any swirl exercise, with a max of 5 points to be added to your homework grade.
+  To get extra credit, email completed assignments to "kaylaxu@usc.edu" when prompted. You will receive 0.25 points for completion of any swirl exercise, with a max of 5 points to be added to your homework grade.
