@@ -7,11 +7,14 @@ date: 01/08/24
 ###### (1) Set Up
 
 ```{r setup}
-    knitr::opts_knit$set(root.dir = normalizePath("/PATH/TO/analysis_data")) 
+    knitr::opts_knit$set(root.dir = normalizePath("/Users/kaylaxu/Desktop/qbio_490_kayla/analysis_data")) 
 ```
 
 ```{r}
 # install (if needed) and load maftools, TCGAbiolinks, and ggplot2 libraries
+library(maftools)
+library(TCGAbiolinks)
+library(ggplot2)
 ```
 
 Before we get into MAF, we need to read in the clinical data (created in Intro_to_Clinical_Data.Rmd) so it can be merged with our MAF data later on.
@@ -61,6 +64,7 @@ Call str() on maf_object.
 
 ```{r Exercise 3.1}
 # write code here
+str(maf_object)
 ```
 
 Notice the @ and $ signs. What do each of them represent?
@@ -72,12 +76,19 @@ List all of the data frames within the maf_object by typing maf_object@ then eit
 
 ```{r Exercise 3.2}
 # write code here
+maf_object@data
 ```
 
 Call head() and str() on the @data df and the @clinical.data df. These will be the main data frames we use in our MAF analysis.
 
 ```{r Exercise 3.3}
 # write code here
+head(maf_object@data)
+str(maf_object@data)
+
+head(maf_object@clinical.data)
+str(maf_object@clinical.data)
+
 ```
 
 View @data and @clinical.data.
@@ -85,13 +96,18 @@ View @data and @clinical.data.
 ```{r Exercise 3.4}
 # write code here
 
-```
+View(maf_object@data)
 
+```
 
 View the Tumor_Sample_Barcode column and the HGVSp_Short column for all TP53 mutations (i.e. Hugo_Symbol == "TP53"). Hint: boolean masking!
 
 ```{r Exercise 3.5}
 # write code here
+tp53_mask <- ifelse(maf_object@data$Hugo_Symbol == 'TP53', T, F)
+
+maf.data <- as.data.frame(maf_object@data)
+maf.data[tp53_mask, c('Tumor_Sample_Barcode', 'HGVSp_Short')]
 
 ```
 
@@ -99,6 +115,7 @@ Call head() on the Amino_acids column in @data.
 
 ```{r Exercise 3.6}
 # write code here
+head(maf.data$Amino_acids)
 
 ```
 Refer to a codon chart and amino acid abbreviation chart to answer the following:
@@ -109,6 +126,8 @@ Call head() on the HGVSp_Short column in @data.
 
 ```{r Exercise 3.7}
 # write code here
+
+head(maf.data$HGVSp_Short)
 ```
 
 What does p.P728Afs*11 mean? (Do some google-ing!)
@@ -121,8 +140,8 @@ We are going to start off by making our first MAF figure using the oncoplot() fu
 Generate an oncoplot by filling in the maf argument below. Fill in the top argument with various integer arguments (e.g. 5, 10, 20, etc.) to see the genes that are mutated in the most patients. Save your plot to your personal repo folder with a descriptive name.
 
 ```{r Exercise 8.1}
-oncoplot(maf = FILL IN HERE,
-         top = FILL IN HERE,
+oncoplot(maf = maf_object,
+         top = 10,
          borderCol = NA) 
 
 ggsave("PATH/TO/qbio_490_NAME/oncoplot_top#_SKCM.png")
@@ -132,8 +151,8 @@ ggsave("PATH/TO/qbio_490_NAME/oncoplot_top#_SKCM.png")
 You can also create an oncoplot for specific genes of your choosing by passing a vector into oncoplot genes argument. Pick 5 genes to plot. Hint: the genes argument accepts a vector of strings.
 
 ```{r Exercise 8.2}
-oncoplot(maf = FILL IN HERE,
-         genes = FILL IN HERE,
+oncoplot(maf = maf_object,
+         genes = c("TTN", "PCLO", "DNAH7"),
          borderCol = NA)
 ```
 
@@ -142,12 +161,12 @@ We can further customize our oncoplots by adding clinical data in the form of an
 age_category column has been added but if you don't understand it, review the Intro_to_R notebook.
 
 ```{r Exercise 8.3}
-median_age <- median(as.numeric(maf_object@clinical.data$age_at_initial_pathologic_diagnosis))
+median_age <- median(as.numeric(maf_object@clinical.data$age_at_diagnosis))
 print(median_age)
 
-maf_object@clinical.data$age_category <- ifelse(maf_object@clinical.data$age_at_initial_pathologic_diagnosis > median_age,'Old', 'Young')
+maf_object@clinical.data$age_category <- ifelse(as.numeric(maf_object@clinical.data$age_at_diagnosis) > median_age,'Old', 'Young')
 
-oncoplot(maf = FILL IN HERE,
+oncoplot(maf = maf_object,
          top = 10,
          clinicalFeatures = "age_category",
          borderCol = NA)
@@ -164,31 +183,47 @@ We can do this with subsetMaf(). The subsetMaf(maf, tsb) function needs two argu
 Store the young patient barcodes in a vector called young_patient_barcodes. Hint: you can use boolean masking for this!
 
 ```{r Exercise 9.1}
-young_patient_barcodes <- 
+maf_clinical <- maf_object@clinical.data
+na_mask <- ifelse(maf_clinical$age_at_diagnosis == '[Not Available]', F, T)
+maf_clinical <- maf_clinical[na_mask,]
+maf_clinical$age_at_diagnosis <- as.numeric(maf_clinical$age_at_diagnosis)
+
+
+median_age <- median(maf_clinical$age_at_diagnosis)
+print(median_age)
+
+maf_clinical$age_category <- ifelse(maf_clinical$age_at_diagnosis > median_age,'Old', 'Young')
+
+
+
+young_patient_barcodes <- maf_clinical[maf_clinical$age_category == 'Young',]
+young_patient_barcodes <- young_patient_barcodes$Tumor_Sample_Barcode
 ```
 
 Use the young_patient_barcode vector in the tsb argument of subsetMaf.
 
 ```{r Exercise 9.2}
-young_maf <- subsetMaf(maf = FILL IN HERE,
-                       tsb = FILL IN HERE)
+young_maf <- subsetMaf(maf = maf_object,
+                       tsb = young_patient_barcodes)
 ```
 
 Create an old_patient_barcode vector and use that to subset just the old patient data.
 
 ```{r Exercise 9.3}
-old_patient_barcodes <- 
+old_patient_barcodes <- maf_clinical[maf_clinical$age_category == 'Old',]
+old_patient_barcodes <- old_patient_barcodes$Tumor_Sample_Barcode
   
-old_maf <- 
+old_maf <- subsetMaf(maf = maf_object,
+                       tsb = old_patient_barcodes)
 ```
 
 Use coOncoplot() to draw two oncoplots side by side, comparing young vs. old patients. m1 is the first MAF object to plot, and m2 is the second. Be sure to provide descriptive names in the m1Name and m2Name arguments! Again, save the plot using the ggsave() function.
 
 ```{r Exercise 9.4}
-coOncoplot(m1 = FILL IN HERE, 
-           m2 = FILL IN HERE, 
-           m1Name = FILL IN HERE, 
-           m2Name = FILL IN HERE, 
+coOncoplot(m1 = young_maf, 
+           m2 = old_maf, 
+           m1Name = "Young", 
+           m2Name = "Old", 
            borderCol = NA)
 
 ggsave("PATH/TO/qbio_490_NAME/coOncoplot_GENE_GENE_SKCM")
@@ -206,26 +241,33 @@ Hypothesized Reason:
 Rewrite the vital_status and gender columns of your clinical df as factors.
 
 ```{r Exercise 4.1}
-clinical$vital_status <- FILL IN HERE
-clinical$gender <- FILL IN HERE
+clinical$vital_status <- factor(clinical$vital_status)
+clinical$gender <- factor(clinical$gender)
 ```
 
 Create a contingency table using table().
 
 ```{r Exercise 4.2}
-contig <- table((FILL IN HERE)
+
+
+clinical <- clinical[clinical$vital_status != '[Not Available]', ]
+clinical$vital_status <- factor(clinical$vital_status)
+clinical$gender <- factor(clinical$gender)
+contig <- table(clinical$vital_status, clinical$gender)
+contig
+
 ```
 
 Visualize our contingency table using a mosaic plot.
 
 ```{r Exercise 4.3}
-mosaicplot(FILL IN HERE)
+mosaicplot(contig)
 ```
 
 Run our Fisher's exact test.
 
 ```{r Exercise 4.4}
-fisher_test <- fisher.test(FILL IN HERE)
+fisher_test <- fisher.test(contig)
 ```
 
 View the results of our test.
@@ -320,16 +362,16 @@ Luckily, we don't have to do the above work by hand for each gene pair we want t
 Run somaticInteractions for your above genes by passing in a vector with your gene names into the genes argument.
 
 ```{r Exercise 7.1}
-somaticInteractions(maf = FILL IN HERE,
-                    genes = FILL IN HERE,
+somaticInteractions(maf = maf_object,
+                    genes = c('TP53', 'PIK3CA', 'MUC16', 'RYR2'),
                     pvalue = c(0.05, 0.1)) ## these are the default p-value significance levels
 ```
 
 Run the following line of code for the top 25 genes.
 
 ```{r Exercise 7.2}
-somaticInteractions(maf = FILL IN HERE,
-                    top = FILL IN HERE,
+somaticInteractions(maf = maf_object,
+                    top = 25,
                     pvalue = c(0.05, 0.1))
 ```
 
@@ -341,8 +383,8 @@ Lollipop plots display the location of each mutation along the gene’s DNA sequ
 Let's make a lollipop plot for TP53.
 
 ```{r Exercise 10.1}
-lollipopPlot(maf = FILL IN HERE,
-             gene = "FILL IN HERE")
+lollipopPlot(maf = maf_object,
+             gene = "TP53")
 
 ggsave("PATH/TO/qbio_490_NAME/lollipop_TP53_SKCM")
 ```
@@ -354,11 +396,11 @@ maf objects from before.
 Now fill in the co-lollipop plot function below. Be sure to add descriptive names for each population.
 
 ```{r Exercise 10.3}
-lollipopPlot2(m1 = FILL IN HERE, 
-              m2 = FILL IN HERE, 
-              m1_name = FILL IN HERE,
-              m2_name = FILL IN HERE,
-              gene = "FILL IN HERE") ## pick any gene of your choosing to fill in here
+lollipopPlot2(m1 = young_maf, 
+              m2 = old_maf, 
+              m1_name = "Young",
+              m2_name = "Old",
+              gene = "TP53") ## pick any gene of your choosing to fill in here
 ```
 
 Now, interpret your plot. Answer the following questions:
@@ -371,12 +413,12 @@ Now, interpret your plot. Answer the following questions:
 ###### (9) Survival Analysis (mafSurvival)
 
 Remember back to Kaplan-Meier survival plots (from the clinical data tutorial). These plots allow us to visualize survival probabilities stratified by different clinical factors (such as age, sex, stage, etc.)
-
+xx
 We can also visualize survival probabilities stratified by mutational status. To do this, we use mafSurvival. This is very similar to our traditional KM plots, you may want to open up the clinical data tutorial to follow along there as well.
 
 ```{r Exercise 11.1}
-mafSurvival(maf = FILL IN HERE,
-            genes = "FILL IN HERE", ## pick a gene of your choosing
+mafSurvival(maf = maf_object,
+            genes = "T53P", ## pick a gene of your choosing
             time = "days_to_last_followup", ## name of the column in maf_object@clinical.data containing survival time
             Status = "Overall_Survival_Status", ## name of the column that contains a boolean value for death events, you may need to recreate this... 
             isTCGA = TRUE)
